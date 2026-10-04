@@ -37,6 +37,10 @@ class VpnClient (
         nativePtr = createNative(config)
         if (nativePtr.toInt() == 0) {
             LOG.error("Failed to create a native client")
+            // The TUN file descriptor was not handed over to the native client,
+            // so close it here; otherwise the tun device may linger after the
+            // service stops.
+            vpnTunInterface?.close()
             return false
         }
 
