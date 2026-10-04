@@ -17,7 +17,7 @@ class Tun (
 
 @Serializable
 class Listener (
-    val tun: Tun
+    val tun: Tun? = null
 )
 
 @Serializable
