@@ -261,8 +261,14 @@ class VpnService : android.net.VpnService(), VpnClientListener {
         }
 
         LOG.info("VPN is starting...")
-        val vpnTunInterface = createTunInterface(config) ?: return run {
-            close()
+        // In SOCKS listener mode there is no TUN interface: the native client
+        // runs a local SOCKS5 proxy instead. In TUN mode a TUN interface is
+        // mandatory, so fail if it cannot be created.
+        val vpnTunInterface = createTunInterface(config)
+        if (config.listener.tun != null && vpnTunInterface == null) {
+            return run {
+                close()
+            }
         }
         // This is required to save startId and pass it to `closeIfLast` in case of DISCONNECTED state event
         val service = this
@@ -300,7 +306,10 @@ class VpnService : android.net.VpnService(), VpnClientListener {
 
     private fun createTunInterface(config: VpnServiceConfig): ParcelFileDescriptor? {
         LOG.info("Request 'create tun interface' received")
-        val tunConfig = config.listener.tun
+        val tunConfig = config.listener.tun ?: run {
+            LOG.info("SOCKS listener mode, no TUN interface will be created")
+            return null
+        }
         try {
             val builder = Builder().setSession("Trust Tunnel")
                 .setMtu(tunConfig.mtuSize.toInt())
