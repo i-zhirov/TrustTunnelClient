@@ -191,7 +191,15 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_adguard_trusttunnel_VpnClient_sta
     }
     auto ctx = (VpnCtx *) native_ptr;
 
-    auto error = ctx->get_native_client().connect(ag::TrustTunnelClient::UseTunnelFd{ag::AutoFd::adopt_fd(tun_fd)});
+    // When no TUN file descriptor is provided (SOCKS listener mode), let the
+    // native client choose the listener automatically from the configuration.
+    ag::TrustTunnelClient::ListenerSettings listener_settings;
+    if (tun_fd < 0) {
+        listener_settings.emplace<ag::TrustTunnelClient::AutoSetup>();
+    } else {
+        listener_settings.emplace<ag::TrustTunnelClient::UseTunnelFd>(ag::AutoFd::adopt_fd(tun_fd));
+    }
+    auto error = ctx->get_native_client().connect(std::move(listener_settings));
     if (error) {
         errlog(g_logger, "Failed to connect: {}", error->pretty_str());
         return (jboolean) false;
