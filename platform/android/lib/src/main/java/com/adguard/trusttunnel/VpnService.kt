@@ -189,6 +189,9 @@ class VpnService : android.net.VpnService(), VpnClientListener {
     }
 
     private var state = State.Stopped
+
+    // True when the current session runs the SOCKS listener (no TUN interface).
+    private var socksMode = false
     private val singleThread = ThreadManager.create("vpn-service", 1)
     @Volatile
     private var certificateVerificator: CertificateVerificator? = null
@@ -261,6 +264,7 @@ class VpnService : android.net.VpnService(), VpnClientListener {
         }
 
         LOG.info("VPN is starting...")
+        socksMode = config.listener.tun == null
         // In SOCKS listener mode there is no TUN interface: the native client
         // runs a local SOCKS5 proxy instead. In TUN mode a TUN interface is
         // mandatory, so fail if it cannot be created.
@@ -374,6 +378,7 @@ class VpnService : android.net.VpnService(), VpnClientListener {
         vpnClient?.stop()
         vpnClient?.close()
         vpnClient = null
+        socksMode = false
         if (startId != null) {
             stopSelf(startId)
         } else {
@@ -396,6 +401,14 @@ class VpnService : android.net.VpnService(), VpnClientListener {
      * @return true if socket was protected or false if an error occurred
      */
     override fun protectSocket(socket: Int): Boolean {
+        // In SOCKS listener mode there is no TUN interface, so there is nothing
+        // to protect the socket against. VpnService.protect() would fail and the
+        // native client would treat the failed protection as fatal, aborting the
+        // endpoint connection. Treat protection as a no-op instead.
+        if (socksMode) {
+            LOG.info("SOCKS mode, skipping socket protection for $socket")
+            return true
+        }
         if (protect(socket)) {
             LOG.info("The socket $socket has been protected successfully")
             return true
