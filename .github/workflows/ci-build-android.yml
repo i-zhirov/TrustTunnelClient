@@ -1,0 +1,82 @@
+name: CI Build Android library
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version override (e.g. 1.2.3). If omitted, the version comes from git describe.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android:
+    name: Build Android AAR
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      TT_CLIENT_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Full history + tags so the Gradle build can resolve the version via git describe.
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;36.0.0" "ndk;29.0.14206865" "cmake;3.22.1"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '1.95'
+
+      - name: Add Android Rust targets
+        run: rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+
+      - name: Install Conan
+        run: python3 -m pip install conan
+
+      - name: Configure SDK paths
+        run: |
+          cd platform/android
+          touch local.properties
+          CMAKE_DIR=$(dirname $(dirname $(which cmake)))
+          echo "sdk.dir=$ANDROID_HOME" >> local.properties
+          echo "cmake.dir=$CMAKE_DIR" >> local.properties
+
+      - name: Build Android library
+        run: |
+          cd platform/android
+          ./gradlew :lib:assembleRelease
+
+      - name: Upload AAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trusttunnel-client-android-aar
+          path: platform/android/lib/build/outputs/aar/*.aar
+          if-no-files-found: error
