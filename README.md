@@ -28,9 +28,10 @@ This is consumed by the app fork
 
 ## Branch layout
 
-- `master` — mirror of the upstream repository (the original README lives in
+- `master` — default branch: mirror of the upstream **code** (this fork README is
+  shown by default; the upstream README is preserved at
   [`README_UPSTREAM.md`](README_UPSTREAM.md))
-- `socks5-proxy-support` — fork changes (Android SOCKS listener support, CI)
+- `socks5-proxy-support` — **fork changes**: Android SOCKS listener support and CI
 
 ## Upstream documentation
 
