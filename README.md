@@ -1,98 +1,40 @@
-<!-- markdownlint-disable MD041 -->
-<p align="center">
-<picture>
-<source media="(prefers-color-scheme: dark)" srcset="https://cdn.adguardcdn.com/website/github.com/TrustTunnel/logo_dark.svg" width="300px" alt="TrustTunnel" />
-<img src="https://cdn.adguardcdn.com/website/github.com/TrustTunnel/logo_light.svg" width="300px" alt="TrustTunnel" />
-</picture>
-</p>
+# TrustTunnelClient Redux
 
-<p align="center">Free, fast, open-source and secure client for the TrustTunnel VPN</p>
+> **Unofficial fork.** This project is a personal fork of the
+> [TrustTunnel Client](https://github.com/TrustTunnel/TrustTunnelClient).
+> It is **not affiliated with or endorsed by the upstream project**, and it is
+> **not** an official release channel. Use at your own risk.
 
-<p align="center"><a href="https://github.com/TrustTunnel/TrustTunnel">Endpoint</a>
-  · <a href="https://github.com/TrustTunnel/TrustTunnelFlutterClient">Flutter-based app</a>
-  · <a href="https://agrd.io/ios_trusttunnel">App Store (iOS)</a>
-  · <a href="https://agrd.io/macos_trusttunnel">App Store (macOS)</a>
-  · <a href="https://agrd.io/android_trusttunnel">Play store</a>
-</p>
+TrustTunnelClient Redux keeps the upstream native client library but adds one
+**experimental feature that is not present upstream**:
 
-TrustTunnel Client Libraries are a collection of C++ libraries that provide
-client network traffic tunneling through a TrustTunnel endpoint. It supports
-Linux, macOS, and Windows platforms.
+## ✨ Experimental feature: SOCKS5 listener support on Android
 
-If you are looking for a TrustTunnel CLI Client, please refer to the
-[Getting Started](#getting-started).
+The upstream Android adapter cannot run the client in SOCKS listener mode (its
+config parser requires a TUN section and the JNI always hands the native client
+a TUN file descriptor, so the native `AutoSetup`-only SOCKS listener is never
+used). This fork fixes the Android adapter so the client can expose a local
+SOCKS5 proxy instead of a TUN device:
 
----
+- `VpnServiceConfig` — make the `tun` config optional (SOCKS-only configs parse)
+- `VpnService` — skip TUN interface creation in SOCKS mode
+- `lib.cpp` (JNI) — use `AutoSetup` listener settings when no TUN fd is provided
+- `protectSocket` — treat protection as a no-op in SOCKS mode (no TUN to protect)
+- `VpnClient` — close the TUN fd if native client creation fails
 
-## Table of Contents
+This is consumed by the app fork
+[TrustTunnelFlutterClient-redux](https://github.com/i-zhirov/TrustTunnelFlutterClient-redux)
+(see its SOCKS5 proxy mode).
 
-- [Features](#features)
-- [Getting Started](#getting-started)
-- [Roadmap](#roadmap)
-- [License](#license)
+## Branch layout
 
----
+- `master` — default branch: mirror of the upstream **code** (this fork README is
+  shown by default; the upstream README is preserved at
+  [`README_UPSTREAM.md`](README_UPSTREAM.md))
+- `socks5-proxy-support` — **fork changes**: Android SOCKS listener support and CI
 
-## Features
+## Upstream documentation
 
-- **TrustTunnel VPN Protocol**: The library implements the TrustTunnel VPN
-  protocol, which is compatible with HTTP/1.1, HTTP/2, and QUIC. By mimicking
-  regular network traffic, it becomes more difficult for government regulators to
-  detect and block.
-
-- **Traffic Tunneling**: The library is capable of tunneling TCP, UDP, and ICMP
-  traffic from the client to the endpoint and back.
-
-- **Cross-Platform Support**: It supports Linux, macOS, and Windows platforms,
-  consistent experience across different operating systems.
-
-- **System-Wide Tunnel and SOCKS5 Proxy**: It can be set up as a system-wide
-  tunnel, utilizing a virtual network interface, as well as a SOCKS5 proxy.
-
-- **Split Tunneling**: The library supports split tunneling, allowing users to
-  exclude connections to certain domains or hosts from routing through the VPN
-  endpoint, or vice versa, only routing connections to specific domains or
-  hosts through the endpoint based on an exclusion list.
-
-- **Custom DNS Upstream**: Users can specify a custom DNS upstream, which is
-  used for DNS queries routed through the VPN endpoint.
-
----
-
-## Getting Started
-
-If you haven't yet set up the endpoint, refer to the
-[Endpoint setup][endpoint-setup] documentation.
-
-Once you have obtained the exported endpoint configuration for the client, refer
-to the [Client setup][client-setup] documentation.
-
-[endpoint-setup]: https://github.com/TrustTunnel/TrustTunnel/blob/master/README.md#endpoint-setup
-[client-setup]: https://github.com/TrustTunnel/TrustTunnel/blob/master/README.md#client-setup
-
----
-
-## Roadmap
-
-While the library currently does not support peer-to-peer communication between clients, we have
-plans to add this feature in future releases. Stay tuned for updates.
-
----
-
-## License
-
-Apache 2.0
-
----
-
-## See also
-
-- [TrustTunnel CLI Client reference](trusttunnel/README.md)
-- [Development documentation](DEVELOPMENT.md)
-- [Platform adapters](platform/README.md)
-- [Android adapter](platform/android/README.md)
-- [Apple adapter](platform/apple/README.md)
-- [Windows adapter](platform/windows/README.md)
-- [Changelog](CHANGELOG.md)
-- [Verifying releases](VERIFY_RELEASES.md)
-- [License](LICENSE)
+The original upstream README is preserved at
+[`README_UPSTREAM.md`](README_UPSTREAM.md) — please refer to it for the full
+project description, architecture, and upstream usage instructions.
